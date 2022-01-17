@@ -5,9 +5,15 @@ const { ParticleName } = require('./particles/particleEnum');
 const Void = require('./particles/Void');
 const Sand = require('./particles/Sand');
 
-const maxMovedParticles = 2000;
 
 class ParticleGrid {
+
+    // settings
+    maxMovedParticles = 10000;
+    randomProcessOrder = false;
+    paused = false;
+
+
     rows = 0;
     columns = 0;
     RGBMap = [];
@@ -48,28 +54,30 @@ class ParticleGrid {
     }
 
     runPhysics() {
+        if(this.paused){
+            return;
+        }
         const movedParticlesIndexes = new Set();
         // From end to start so it accounts for gravity
         let movedParticles = 0;
         const movableParticles = Array.from(this.movableParticlesSet);
-        shuffleArray(movableParticles)
-        for (let index of movableParticles) {
-            if (this.updateParticle(index)) {
+        for (let i = 0; i < movableParticles.length; i++) {
+            if (this.updateParticle(movableParticles[i])) {
                 movedParticles++;
-                movedParticlesIndexes.add(index);
+                movedParticlesIndexes.add(movableParticles[i]);
             }
 
             // Only attempt to move so many particles per frame
-            if (movedParticles >= maxMovedParticles) {
+            if (movedParticles >= this.maxMovedParticles) {
                 break;
             }
         }
-        if (movedParticles < maxMovedParticles) {
+        if (movedParticles < this.maxMovedParticles) {
             const nonVoidedNonMovedParticles = Array.from(this.nonVoidedParticlesSet).filter(index => !movedParticlesIndexes.has(index));
             shuffleArray(nonVoidedNonMovedParticles);
             // Update random particles because we have spare time on this frame
             let i = 0;
-            while (i < maxMovedParticles - movedParticles && nonVoidedNonMovedParticles.length > 0) {
+            while (i < this.maxMovedParticles - movedParticles && nonVoidedNonMovedParticles.length > 0) {
                 const index = nonVoidedNonMovedParticles.pop();
                 movedParticles += this.updateParticle(index);
             }
@@ -115,6 +123,38 @@ class ParticleGrid {
 
     getRGBMap() {
         return this.RGBMap;
+    }
+
+    getPPF() {
+        return this.maxMovedParticles
+    }
+
+    setPPF(ppf) {
+        this.maxMovedParticles = ppf < 0 ? 0 : ppf;
+    }
+
+    getPaused() {
+        return this.paused;
+    }
+
+    setPaused(paused) {
+        this.paused = paused;
+    }
+
+    getRandomProcessingOrder() {
+        return this.randomProcessOrder;
+    }
+
+    setRandomProcessingOrder(randomProcessingOrder) {
+        this.randomProcessOrder = randomProcessingOrder;
+    }
+
+    getNonVoidParticlesCount() {
+        return this.nonVoidedParticlesSet.size;
+    }
+
+    getMovableParticlesCount() {
+        return this.movableParticlesSet.size;
     }
 
 }
@@ -10981,15 +11021,32 @@ const Brush = require('./util/brush');
 const ParticleGrid = require('./ParticleGrid');
 
 const sandboxArea = document.getElementById('sandboxArea');
+
+const particleCount = document.getElementById('particleCount');
+const movableParticles = document.getElementById('movableParticles');
+
+
+const brushTool = document.getElementById('brushTool');
 const brushPlus = document.getElementById('brushPlus');
 const brushMinus = document.getElementById('brushMinus');
+const brushMode = document.getElementById('brushMode');
+
+const ppf = document.getElementById('ppf');
+const ppfPlus = document.getElementById('ppfPlus');
+const ppfMinus = document.getElementById('ppfMinus');
+let ppfClickPlus = false;
+let ppfClickMinus = false;
+
+const pause = document.getElementById('pause');
+const clear = document.getElementById('clear');
 
 const rows = sandboxArea.offsetHeight;
 const columns = sandboxArea.offsetWidth;
 
 // Data
-const particles = new ParticleGrid(rows, columns);
+let particles = new ParticleGrid(rows, columns);
 let inClick = false;
+let onSandbox = false;
 
 const pixels = grid(particles.getRGBMap(), {
   root: sandboxArea,
@@ -11009,10 +11066,81 @@ let cursorRow, cursorColumn, cursorPrevRow, cursorPrevColumn;
 mouse.on('move', function () { OnMouseMove(mouse[1], mouse[0]); });
 sandboxArea.addEventListener('mousedown', function (e) { OnMouseDown(e); });
 sandboxArea.addEventListener('mouseup', function (e) { OnMouseUp(e); });
+sandboxArea.addEventListener("mouseleave", (e) => {
+    OnMouseUp(e);
+});
 
-setInterval(() => { brushTool.innerHTML = `Brush(${brush.getSize()})` }, 10);
+setInterval(() => { particleCount.innerHTML = `${particles.getNonVoidParticlesCount().toString().padStart(6, 0)}` }, 10);
+setInterval(() => {
+  const count = particles.getMovableParticlesCount();
+  const ppf = particles.getPPF();
+  // gradually interpolates the rgb color to red as it approaches the ppf
+  const red = Math.floor(255 - (((ppf - count) / ppf) * 255));
+  movableParticles.style.color = `rgb(${red}, 0, 0)`;
+
+  movableParticles.innerHTML = `${count.toString().padStart(4, 0)}`;
+}, 10);
+
+setInterval(() => {
+  let mode = '';
+  switch (brush.getMode()) {
+    case 0:
+      mode = 'Free';
+      break;
+    case 1:
+      mode = 'Restricted';
+      break;
+  }
+
+  brushMode.innerHTML = mode
+}, 10);
+brushMode.addEventListener('click', (e) => { brush.cycleMode(); });
+
+setInterval(() => { brushTool.innerHTML = `Brush:${brush.getSize().toString().padStart(2, 0)}` }, 10);
 brushPlus.addEventListener('click', (e) => { brush.setSize(brush.getSize() + 1) });
 brushMinus.addEventListener('click', (e) => { brush.setSize(brush.getSize() - 1) });
+brushTool.addEventListener('wheel', (e) => {
+  if (e.deltaY < 0) {
+    brush.setSize(brush.getSize() + 1);
+  } else {
+    brush.setSize(brush.getSize() - 1);
+  }
+});
+
+sandboxArea.addEventListener('wheel', (e) => {
+  if (e.deltaY < 0) {
+    brush.setSize(brush.getSize() + 1);
+  } else {
+    brush.setSize(brush.getSize() - 1);
+  }
+});
+
+setInterval(() => {
+  if (ppfClickPlus) {
+    particles.setPPF(particles.getPPF() + 10)
+  } else if (ppfClickMinus) {
+    particles.setPPF(particles.getPPF() - 10)
+  }
+  ppf.innerHTML = `PPF:${particles.getPPF().toString().padStart(4, 0)}`
+}, 10);
+ppfPlus.addEventListener('mousedown', (e) => { ppfClickPlus = true });
+ppfPlus.addEventListener('mouseup', (e) => { ppfClickPlus = false });
+ppfMinus.addEventListener('mousedown', (e) => { ppfClickMinus = true });
+ppfMinus.addEventListener('mouseup', (e) => { ppfClickMinus = false });
+ppf.addEventListener('wheel', (e) => {
+  if (e.deltaY < 0) {
+    particles.setPPF(particles.getPPF() + 10)
+  } else {
+    particles.setPPF(particles.getPPF() - 10)
+  }
+});
+
+
+
+setInterval(() => { pause.innerHTML = `${particles.getPaused() ? 'Play' : 'Pause'}` }, 100);
+pause.addEventListener('click', (e) => { particles.getPaused() ? particles.setPaused(false) : particles.setPaused(true) });
+
+clear.addEventListener('click', (e) => { particles = new ParticleGrid(rows, columns); });
 
 function OnMouseMove(row, column) {
   cursorRow = row;
@@ -11038,7 +11166,7 @@ function brushClick(row, column, prevRow, prevColumn) {
   if (row >= rows && column >= columns) {
     return;
   }
-  brush.getPixelIndexes(row, column, prevRow, prevColumn).forEach(function (index) {
+  brush.getPixelIndexes(row, column, prevRow, prevColumn, particles.getMovableParticlesCount(), particles.maxMovedParticles).forEach(function (index) {
     particles.paint(index, brush.getParticleName());
   });
 
@@ -11047,7 +11175,7 @@ function brushClick(row, column, prevRow, prevColumn) {
 
 // Update Grid data
 pixels.frame(function () {
-  if(inClick) {
+  if (inClick) {
     brushClick(cursorRow, cursorColumn, cursorPrevRow, cursorPrevColumn);
   }
   particles.runPhysics();
@@ -11087,7 +11215,7 @@ class Particle {
 
     getIndex(x, y, maxX, maxY) {
         const index = (x * maxX) + y;
-        if(x > maxY || y > maxX || x < 0 || y < 0 || index >= maxX * maxY) {
+        if(x >= maxY || y >= maxX || x < 0 || y < 0 || index >= maxX * maxY) {
             return -1;
         }
         return index;
@@ -11125,64 +11253,48 @@ const { ParticleColor } = require('./particleEnum');
 class Sand extends Particle {
 
     type = ParticleName.Sand;
+    maxVelocity = 5;
     velocity = 1;
 
     runPhysics(particles, maxX, maxY) {
         /*
         * Sand physics.
         * A pixel of Sand will move down if it is not blocked directly below.
-        * It can muve up to 5 pixels dowards if it is not blocked.
+        * It can muve up to 2 pixels dowards if it is not blocked.
         * In case it is blocked, it will move to the left or right.
         * It can only move sideways as long as it has velocity.
         * Steping downwards causes it to gain velocityy to a maximum of 5.
         */
 
-        // While a particle cannot do any movements it is unlikely it will be able to move for a while.
-        // So we only check once in a while.
-
-        // Try to move down
-
         this.canMove = true;
 
-        let hasMoveddDown = false;
-        for (let i = 0; i < 5; i++) {
-            const newIndex = this.getIndex(this.x + i + 1, this.y, maxX, maxY);
-            if (newIndex == -1) {
-                break;
-            }
-            if (particles[newIndex].getType() === ParticleName.Void) {
-                this.x += i + 1;
-                this.velocity = this.velocity < 5 ? this.velocity + 1 : 5;
-                hasMoveddDown = true;
-                break;
-            }
-        }
-
-        if (hasMoveddDown) {
-            return this.getIndex(this.x, this.y, maxX, maxY);
-        }
-
-        // Check if it is blocked below
-        if (this.velocity > 0) {
-            this.velocity--;
-            // Check if it is blocked to the left
-            const indexLeft = this.getIndex(this.x, this.y - 1, maxX, maxY);
-            if (indexLeft !== -1 && particles[indexLeft].getType() === ParticleName.Void) {
-                this.y -= 1;
-                return indexLeft;
-            } else {
-                // Check if it is blocked to the right
-                const indexRight = this.getIndex(this.x, this.y + 1, maxX, maxY);
-                if (indexRight !== -1 && particles[indexRight].getType() === ParticleName.Void) {
-                    this.y += 1;
-                    return indexRight;
+        // Try to move down
+        let hasMoved = false;
+        const newIndex = this.getIndex(this.x + 1, this.y, maxX, maxY);
+        if (newIndex >= 0 && particles[newIndex].getType() === ParticleName.Void) {
+            this.x += 1;
+            this.velocity = this.velocity < this.maxVelocity ? this.velocity + 1 : this.maxVelocity;
+            hasMoved = true;
+        } else {
+            let direction = Maths.randomIntFromInterval(0, 1) === 0 ? -1 : 1;
+            // Move to left or right at random
+            // if it is blocked in one side, it will move to the other side
+            let hasFailled = false;
+            while (this.velocity > 0 && !hasFailled) {
+                const newIndex = this.getIndex(this.x, this.y + direction, maxX, maxY);
+                if (newIndex >= 0 && particles[newIndex].getType() === ParticleName.Void) {
+                    this.y += direction;
+                    this.velocity -= 1;
+                    hasMoved = true;
+                    break;
+                } else {
+                    hasFailled = true;
+                    direction = -1 * direction;
                 }
             }
         }
 
-        // if it cannot do any of those moves it lose sits velocity
-        this.velocity = 0;
-        this.canMove = false;
+        this.canMove = hasMoved;
         return this.getIndex(this.x, this.y, maxX, maxY);
     }
 
@@ -11251,21 +11363,25 @@ module.exports = {
 },{}],55:[function(require,module,exports){
 const { ParticleName } = require('../particles/particleEnum');
 
+const BrushMode = {
+    Free: 0,
+    Restricted: 1,
+}
 class Brush {
 
     rows = 0;
     columns = 0;
     brushSize = 0;
     particleName = ParticleName.Sand;
+    mode = BrushMode.Restricted;
 
     constructor(rows, columns) {
         this.rows = rows;
         this.columns = columns;
-        this.brushSize = 1;
         this.particleName = ParticleName.Sand;
     }
 
-    getPixelIndexes(y1, x1, y2, x2) {
+    getPixelIndexes(y1, x1, y2, x2, currentParticles = 0, maxParticles = 0) {
         let points = [];
         if (y1 == y2 && x1 == x2) {
             points.push([y1, x1]);
@@ -11287,7 +11403,9 @@ class Brush {
 
         const expandedPoints = [];
         for (const point of points) {
-
+            if(this.mode ==  BrushMode.Restricted && currentParticles > maxParticles) {
+                return Array.from(new Set(expandedPoints));
+            }
             let startX = point[0] + this.brushSize * -1;
             startX = startX > 0 ? startX : 0;
             startX = startX < this.rows ? startX : this.rows - 1;
@@ -11308,6 +11426,7 @@ class Brush {
                 for (let currentY = startY; currentY <= endY; currentY++) {
                     if (currentX >= 0 && currentX <= this.rows && currentX >= 0 && currentY <= this.columns) {
                         expandedPoints.push((currentX * this.columns) + currentY);
+                        currentParticles++;
                     }
                 }
             }
@@ -11321,7 +11440,6 @@ class Brush {
     }
 
     setSize(size) {
-        // size is limited to 0 and 10
         if (size < 0) {
             size = 0;
         } else if (size > 10) {
@@ -11337,6 +11455,21 @@ class Brush {
 
     getParticleName() {
         return this.particleName;
+    }
+
+    getMode() {
+        return this.mode;
+    }
+
+    setMode(mode) {
+        this.mode = mode;
+    }
+
+    cycleMode() {
+        this.mode++;
+        if (this.mode > BrushMode.Restricted) {
+            this.mode = BrushMode.Free;
+        }
     }
 
 }

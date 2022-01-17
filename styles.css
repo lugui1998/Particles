@@ -30,16 +30,29 @@ main {
     background-color: rgb(53, 53, 53);
 }
 
+@font-face {
+    font-family: prstart;
+    src: url('prstart.ttf');
+}
+
 footer {
-    background: lightblue;
     display: grid;
-    grid-template-columns: 70% 30%;
+    grid-template-columns: 60% 40%;
     background-color: #2196F3;
+    font-family: prstart;
+    font-size: 12px;
     padding: 1px;
+    -webkit-user-select: none;
+    /* Safari */
+    -moz-user-select: none;
+    /* Firefox */
+    -ms-user-select: none;
+    /* IE10+/Edge */
+    user-select: none;
+    /* Standard */
 }
 
 #elements {
-    background: lightblue;
     display: grid;
     grid-template-columns: auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto;
     background-color: #2196F3;
@@ -52,9 +65,38 @@ footer {
     font-size: 15px;
 }
 
-.brush {
+.properties {
+    display: grid;
+    grid-template-columns: auto auto auto;
+}
+
+.setting {
+    display: grid;
+    margin-left: auto;
+    margin-right: auto;
+    grid-template-columns: 5% 90% 5%;
+    padding: 1px;
+}
+
+.settingItem {
     cursor: pointer;
     padding: 6px;
     float: right;
     text-align: center;
+}
+
+.propIncrement {
+    cursor: pointer;
+    margin-top: 6px;
+}
+
+.propDecrement {
+    cursor: pointer;
+    margin-top: 4px;
+}
+
+#elements>div {
+    cursor: pointer;
+    text-align: left;
+    font-size: 15px;
 }
