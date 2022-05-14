@@ -1,1 +1,716 @@
-!function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);throw(f=new Error("Cannot find module '"+i+"'")).code="MODULE_NOT_FOUND",f}c=n[i]={exports:{}},e[i][0].call(c.exports,function(r){return o(e[i][1][r]||r)},c,c.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}({1:[function(require,module,exports){class Particles{static Air=0;static Dust=1;static Stone=2;static Water=3;static Metal=4;static Rust=5;static Lava=6;static Void=7;static Fire=8;static Steam=9;static getId(name){return Particles[name]}static isFluid(id){return[Particles.Water,Particles.Lava,Particles.Steam].includes(id)}static isHidden(id){return[Particles.Rust,Particles.Steam].includes(id)}}const Names=[],Colors=(Names[Particles.Air]="Air",Names[Particles.Dust]="Dust",Names[Particles.Stone]="Stone",Names[Particles.Water]="Water",Names[Particles.Metal]="Metal",Names[Particles.Rust]="Rust",Names[Particles.Lava]="Lava",Names[Particles.Void]="Void",Names[Particles.Fire]="Fire",Names[Particles.Steam]="Steam",[]),Density=(Colors[Particles.Air]=[20,20,20],Colors[Particles.Dust]=[242,189,107],Colors[Particles.Stone]=[128,128,128],Colors[Particles.Water]=[64,64,255],Colors[Particles.Metal]=[64,64,64],Colors[Particles.Rust]=[121,79,58],Colors[Particles.Lava]=[255,102,51],Colors[Particles.Void]=[0,0,0],Colors[Particles.Fire]=[255,50,50],Colors[Particles.Steam]=[204,204,204],[]),InitialState=(Density[Particles.Air]=.05,Density[Particles.Dust]=.4,Density[Particles.Stone]=.8,Density[Particles.Water]=.1,Density[Particles.Rust]=Density[Particles.Dust],Density[Particles.Lava]=.6,Density[Particles.Fire]=0,Density[Particles.Steam]=.07,[]);InitialState[Particles.Air]=[Particles.Air,0,0,0],InitialState[Particles.Dust]=[Particles.Dust,5,0,0],InitialState[Particles.Stone]=[Particles.Stone,0,0,0],InitialState[Particles.Water]=[Particles.Water,0,30,0],InitialState[Particles.Metal]=[Particles.Metal,0,0,0],InitialState[Particles.Rust]=[Particles.Rust,0,0,0],InitialState[Particles.Lava]=[Particles.Lava,0,0,0],InitialState[Particles.Void]=[Particles.Void,0,0,0],InitialState[Particles.Fire]=[Particles.Fire,0,0,0],InitialState[Particles.Steam]=[Particles.Steam,0,90,0],module.exports={Particles:Particles,Names:Names,Colors:Colors,Density:Density,InitialState:InitialState}},{}],2:[function(require,module,exports){class Random{static int(min,max){return Math.floor(Math.random()*(max-min+1))+min}static getRandomRGB(){return[Random.int(0,255),Random.int(0,255),Random.int(0,255)]}static direction(){return.5<Math.random()?1:-1}static float(min,max){return Math.random()*(max-min)+min}static number(){return Math.random()}static string(size){let text="";var possible="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";for(let i=0;i<size;i++)text+=possible.charAt(Math.floor(Math.random()*possible.length));return text}}module.exports=Random},{}],3:[function(require,module,exports){const{Colors,Particles,Density}=require("./Particles/Particles"),Random=require("./Utils/Random");let pixelData,canvas,startX,startY,endX,endY,pixelDataSize,screenWidth,screenHeight,lineOrder=[],width,height;function render(){let imagedata=ctx.createImageData(width,height);for(let y=startY;y<endY;y++)for(let x=startX;x<endX;x++)try{var pixelIndex=coordsToIndex(x,y),imageIndex=4*(x-startX+(y-startY)*width),color=Colors[pixelData[pixelIndex]];imagedata.data[imageIndex]=color[0],imagedata.data[1+imageIndex]=color[1],imagedata.data[2+imageIndex]=color[2],imagedata.data[3+imageIndex]=255}catch(e){}ctx.putImageData(imagedata,0,0),requestAnimationFrame(render)}function coordsToIndex(x,y){return(x+y*screenWidth)*pixelDataSize}let reverseOrder=!(onmessage=function(e){var message=e.data;switch(message.type){case"init":!function(data){pixelData=new Int16Array(data.sharedBuffer),canvas=data.canvas,startX=data.startX,startY=data.startY,endX=data.endX,endY=data.endY,width=endX-startX,height=endY-startY,pixelDataSize=data.pixelDataSize,screenWidth=data.screenWidth,screenHeight=data.screenHeight;for(let x=startX;x<endX;x++)lineOrder.push(x);ctx=canvas.getContext("2d",{alpha:!1}),requestAnimationFrame(render)}(message.data);break;case"doPhysics":!function(){for(let y=endY-1;y>=startY;y--){!function(array){for(let i=array.length-1;0<i;i--){var j=Math.floor(Random.number()*(i+1));[array[i],array[j]]=[array[j],array[i]]}}(lineOrder);for(var x of lineOrder)!function(x,y){var index=coordsToIndex(x,y);pixelData[index]!==Particles.Air&&(function(index,x,y){switch(pixelData[index]){case Particles.Dust:dust(x,y);break;case Particles.Stone:!function(x,y){var adjacent=[[x-1,y],[x+1,y],[x,y-1],[x,y+1]],index=coordsToIndex(x,y);for(var[targetX,targetY]of adjacent)if(isInBounds(targetX,targetY)){targetX=coordsToIndex(targetX,targetY);if(pixelData[targetX]===Particles.Lava&&Random.number()<.001)return pixelData[index]=Particles.Lava}let i=0,canMove=!0;for(;isEmpty(x,y+1)?movePixel(x,y,x,++y):canMove=!1,++i<=3&&canMove;);}(x,y);break;case Particles.Water:!function(x,y){let index=coordsToIndex(x,y);if(100<=pixelData[index+2])pixelData[index]=Particles.Steam;else{let i=0,canMove=!0;for(;isEmpty(x,y+1)?(movePixel(x,y,x,++y),index=coordsToIndex(x,y)):canMove=!1,++i<2&&canMove;);let direction=Random.direction();for(i=0;isEmpty(x+direction,y)?(movePixel(x,y,x+direction,y),x+=direction):direction*=-1,++i<3;);}}(x,y);break;case Particles.Metal:!function(x,y){var adjacent=[[x-1,y],[x+1,y],[x,y-1],[x,y+1]],index=coordsToIndex(x,y);for(var[targetX,targetY]of adjacent)if(isInBounds(targetX,targetY)){targetX=coordsToIndex(targetX,targetY);if(pixelData[targetX]===Particles.Water){if(Random.number()<.01)return pixelData[index]=Particles.Rust}else if(pixelData[targetX]===Particles.Rust){if(Random.number()<.001)return pixelData[index]=Particles.Rust}else if(pixelData[targetX]===Particles.Lava&&Random.number()<.01)return pixelData[index]=Particles.Lava}}(x,y);break;case Particles.Rust:!function(x,y){dust(x,y)}(x,y);break;case Particles.Lava:!function(x,y){var adjacent=[[x-1,y],[x+1,y],[x,y-1],[x,y+1]],index=coordsToIndex(x,y);for(var[targetX,targetY]of adjacent){targetX=coordsToIndex(targetX,targetY);if(pixelData[targetX]===Particles.Water)return pixelData[index]=Particles.Stone,pixelData[targetX+2]+=100}let i=0,canMove=!0;for(;isEmpty(x,y+1)?movePixel(x,y,x,++y):canMove=!1,++i<2&&canMove;);if(!canMove){let direction=Random.direction();for(i=0;isEmpty(x+direction,y)?(movePixel(x,y,x+direction,y),x+=direction):direction*=-1,++i<3;);}}(x,y);break;case Particles.Void:!function(x,y){x=[[x-1,y],[x+1,y],[x,y-1],[x,y+1]];for(var[targetX,targetY]of x)isEmpty(targetX,targetY)||pixelData[coordsToIndex(targetX,targetY)]===Particles.Void||removePixel(targetX,targetY)}(x,y);break;case Particles.Fire:!function(x,y){let index=coordsToIndex(x,y);if(pixelData[index+1])pixelData[index+1]=0;else if(.95<Random.number())removePixel(x,y);else{let i=0,canMove=!0;for(;isInBounds(x,y-1)&&pixelData[coordsToIndex(x,y-1)]===Particles.Air&&(movePixel(x,y,x,--y),index=coordsToIndex(x,y),pixelData[index+1]=1),++i<2&&canMove;);var direction=.5<Random.number()?1:-1;isEmpty(x+direction,y)?(movePixel(x,y,x+direction,y),index=coordsToIndex(x+direction,y),pixelData[index+1]=1):isEmpty(x-direction,y)?(movePixel(x,y,x-direction,y),index=coordsToIndex(x-direction,y),pixelData[index+1]=1):canMove=!1}}(x,y);break;case Particles.Steam:!function(x,y){let index=coordsToIndex(x,y);Random.number()<.05&&pixelData[index+2]--;if(pixelData[index+2]<=50)pixelData[index]=Particles.Water;else{var direction=.5<Random.number()?1:-1;for(i=0;isEmpty(x+direction,y)&&(movePixel(x,y,x+direction,y),x+=direction,index=coordsToIndex(x,y)),++i<1;);Random.number()<.3&&isEmpty(x,y-1)&&movePixel(x,y,x,--y)}}(x,y)}}(index,x,y),function(index,x,y){var pixelBellow=coordsToIndex(x,y+1),pixelAbove=coordsToIndex(x,y-1);!isEmpty(x,y-1)&&Particles.isFluid(pixelData[pixelBellow])?shouldSink(index,pixelBellow)&&swapPixel(x,y,x,y+1):!isEmpty(x,y+1)&&Particles.isFluid(pixelData[pixelAbove])&&shouldSink(pixelAbove,index)&&swapPixel(x,y,x,y-1)}(index,x,y))}(x,y)}reverseOrder=!reverseOrder,postMessage({type:"donePhysics"})}();break;case"updatePixels":updatePixels(message.data)}});function isInBounds(x,y){return 0<=x&&x<screenWidth&&0<=y&&y<screenHeight}function isEmpty(x,y){if(isInBounds(x,y))return x=coordsToIndex(x,y),pixelData[x]===Particles.Air||pixelData[x]===Particles.Fire}function shouldSink(index,targetIndex){return Density[pixelData[index]]>Density[pixelData[targetIndex]]&&Density[pixelData[index]]>Random.float(0,2*Density[pixelData[targetIndex]])}function dust(x,y){var targetX,targetY,aboveIndex,index=coordsToIndex(x,y),adjacent=(pixelData[index+1]=100<pixelData[index+1]?100:pixelData[index+1],pixelData[index+1]=pixelData[index+1]<0?0:pixelData[index+1],[[x-1,y],[x+1,y],[x,y-1],[x,y+1]]);for([targetX,targetY]of adjacent){var targetIndex=coordsToIndex(targetX,targetY);if(isInBounds(targetX,targetY)&&(pixelData[targetIndex]===Particles.Lava||pixelData[targetIndex]===Particles.Fire)&&Random.number()<.5)return void(pixelData[index]=Particles.Fire)}if(pixelData[index+1]<=0){let count=0,i=0;var adjacentDust=[[x-1,y],[x+1,y],[x,y-1],[x-1,y-1],[x+1,y-1],[x,y+1],[x+1,y+1],[x-1,y+1]];do{const[targetX,targetY]=adjacentDust[i];if(isInBounds(targetX,targetY)){const targetIndex=coordsToIndex(targetX,targetY);pixelData[targetIndex]===Particles.Dust&&count++}}while(++i<adjacentDust.length);if(4<=count)return}pixelData[index+1]<0&&(pixelData[index+1]=0),100<pixelData[index+1]&&(pixelData[index+1]=100);let i=0,canMove=!0;do{isEmpty(x,y+1)?(aboveIndex=coordsToIndex(x,y-1),isInBounds(x,y-1)&&pixelData[aboveIndex]===Particles.Dust&&pixelData[aboveIndex+1]++,pixelData[index+1]+=2,movePixel(x,y,x,++y)):(pixelData[index+1]--,canMove=!1)}while(++i<=2&&canMove);pixelData[index+1]<=0||(isEmpty(x+(adjacent=Random.direction()),y)?movePixel(x,y,x+adjacent,y):Particles.isFluid(pixelData[coordsToIndex(x+adjacent,y)])?swapPixel(x,y,x+adjacent,y):canMove||pixelData[index+1]--)}function removePixel(x,y){var index=coordsToIndex(x,y);for(let i=0;i<pixelDataSize;i++)pixelData[index+i]=0}function movePixel(prevX,prevY,x,y){var prevPos=coordsToIndex(prevX,prevY),newPos=coordsToIndex(x,y);for(let i=0;i<pixelDataSize;i++)pixelData[newPos+i]=pixelData[prevPos+i],pixelData[prevPos+i]=0}function swapPixel(x,y,x2,y2){var temp,index1=coordsToIndex(x,y),index2=coordsToIndex(x2,y2);for(let i=0;i<pixelDataSize;i++)temp=pixelData[index1+i],pixelData[index1+i]=pixelData[index2+i],pixelData[index2+i]=temp}},{"./Particles/Particles":1,"./Utils/Random":2}]},{},[3]);
+(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+class Particles {
+    static Air = 0;
+    static Dust = 1;
+    static Stone = 2;
+    static Water = 3;
+    static Metal = 4;
+    static Rust = 5;
+    static Lava = 6;
+    static Void = 7;
+    static Fire = 8;
+    static Steam = 9;
+
+
+    static getId(name) {
+        return Particles[name];
+    }
+
+    static isFluid(id) {
+        return [
+            Particles.Water,
+            Particles.Lava,
+            Particles.Steam,
+        ].includes(id);
+    }
+
+    static isHidden(id) {
+        return [
+            Particles.Rust,
+            Particles.Steam,
+        ].includes(id);
+    }
+}
+
+const Names = []
+Names[Particles.Air] = 'Air';
+Names[Particles.Dust] = 'Dust';
+Names[Particles.Stone] = 'Stone';
+Names[Particles.Water] = 'Water';
+Names[Particles.Metal] = 'Metal';
+Names[Particles.Rust] = 'Rust';
+Names[Particles.Lava] = 'Lava';
+Names[Particles.Void] = 'Void';
+Names[Particles.Fire] = 'Fire';
+Names[Particles.Steam] = 'Steam';
+
+
+const Colors = [];
+Colors[Particles.Air] = [20, 20, 20];
+Colors[Particles.Dust] = [242, 189, 107];
+Colors[Particles.Stone] = [128, 128, 128];
+Colors[Particles.Water] = [64, 64, 255];
+Colors[Particles.Metal] = [64, 64, 64];
+Colors[Particles.Rust] = [121, 79, 58];
+Colors[Particles.Lava] = [255, 102, 51];
+Colors[Particles.Void] = [0, 0, 0];
+Colors[Particles.Fire] = [255, 50, 50];
+Colors[Particles.Steam] = [204, 204, 204];
+
+const Density = [];
+Density[Particles.Air] = 0.05;
+Density[Particles.Dust] = 0.4;
+Density[Particles.Stone] = 0.8;
+Density[Particles.Water] = 0.1;
+Density[Particles.Rust] = Density[Particles.Dust];
+Density[Particles.Lava] = 0.6;
+Density[Particles.Fire] = 0;
+Density[Particles.Steam] = 0.07;
+
+const InitialState = [];
+InitialState[Particles.Air] = [Particles.Air, 0, 0, 0];
+InitialState[Particles.Dust] = [Particles.Dust, 5, 0, 0];
+InitialState[Particles.Stone] = [Particles.Stone, 0, 0, 0];
+InitialState[Particles.Water] = [Particles.Water, 0, 30, 0];
+InitialState[Particles.Metal] = [Particles.Metal, 0, 0, 0];
+InitialState[Particles.Rust] = [Particles.Rust, 0, 0, 0];
+InitialState[Particles.Lava] = [Particles.Lava, 0, 0, 0];
+InitialState[Particles.Void] = [Particles.Void, 0, 0, 0];
+InitialState[Particles.Fire] = [Particles.Fire, 0, 0, 0];
+InitialState[Particles.Steam] = [Particles.Steam, 0, 90, 0];
+
+
+module.exports = {
+    Particles,
+    Names,
+    Colors,
+    Density,
+    InitialState,
+}
+
+},{}],2:[function(require,module,exports){
+class Random {
+
+    static int(min, max) {
+        // return random integer
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    static getRandomRGB() {
+        return [Random.int(0, 255), Random.int(0, 255), Random.int(0, 255)];
+    }
+
+    static direction() {
+        return Math.random() > 0.5 ? 1 : -1;
+    }
+
+    static float (min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    static number() {
+        // just a wrapper for Math.random()
+        return Math.random();
+    }
+
+    static string(size) {
+        let text = "";
+        const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+        for (let i = 0; i < size; i++)
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+        return text;
+    }
+
+}
+
+module.exports = Random;
+},{}],3:[function(require,module,exports){
+const { Colors, Particles, Density, Liquids } = require('./Particles/Particles');
+const Random = require('./Utils/Random');
+
+let pixelData;
+let canvas;
+let startX;
+let startY;
+let endX;
+let endY;
+let pixelDataSize;
+let screenWidth;
+let screenHeight;
+
+let lineOrder = [];
+
+let width;
+let height;
+
+onmessage = function (e) {
+  handleMessage(e.data);
+}
+
+function handleMessage(message) {
+  switch (message.type) {
+    case 'init': initPixelGrid(message.data); break;
+    case 'doPhysics': doPhysics(); break;
+    case 'updatePixels': updatePixels(message.data); break;
+  }
+}
+
+function initPixelGrid(data) {
+  pixelData = new Int16Array(data.sharedBuffer);
+  canvas = data.canvas;
+  startX = data.startX;
+  startY = data.startY;
+  endX = data.endX;
+  endY = data.endY;
+  width = endX - startX;
+  height = endY - startY;
+  pixelDataSize = data.pixelDataSize;
+  screenWidth = data.screenWidth;
+  screenHeight = data.screenHeight;
+
+  for (let x = startX; x < endX; x++) {
+    lineOrder.push(x);
+  }
+
+  ctx = canvas.getContext('2d', { alpha: false });
+  requestAnimationFrame(render);
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Random.number() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+function render() {
+
+  let imagedata = ctx.createImageData(width, height);
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      try {
+        const pixelIndex = coordsToIndex(x, y);
+
+        // Map the index to the actual position without offset
+        const imageIndex = (x - startX + (y - startY) * width) * 4;
+
+        let color = Colors[pixelData[pixelIndex]];
+
+        // add a pixel
+        imagedata.data[imageIndex] = color[0];
+        imagedata.data[imageIndex + 1] = color[1];
+        imagedata.data[imageIndex + 2] = color[2];
+        imagedata.data[imageIndex + 3] = 255;
+      } catch (e) {
+
+      }
+    }
+  }
+
+  ctx.putImageData(imagedata, 0, 0);
+
+  requestAnimationFrame(render);
+}
+
+
+
+function coordsToIndex(x, y) {
+  // On a array of size screenWidth * screenHeight
+  // Find the index of the pixel determined by the x and y coordinates
+
+  return (x + y * screenWidth) * pixelDataSize;
+}
+
+let reverseOrder = false;
+function doPhysics() {
+  // for each pixel of the Tile from end to start
+  for (let y = endY - 1; y >= startY; y--) {
+    shuffleArray(lineOrder);
+    // for (let x = endX - 1; x >= startX; x--) {
+    for (let x of lineOrder) {
+      processPixel(x, y);
+    }
+  }
+  reverseOrder = !reverseOrder;
+
+  postMessage({
+    type: 'donePhysics',
+  });
+}
+
+
+function processPixel(x, y) {
+  const index = coordsToIndex(x, y);
+
+  if (pixelData[index] === Particles.Air) {
+    return;
+  }
+
+  handleParticle(index, x, y);
+  handleFluid(index, x, y);
+}
+
+function handleFluid(index, x, y) {
+  const pixelBellow = coordsToIndex(x, y + 1);
+  const pixelAbove = coordsToIndex(x, y - 1);
+
+  //  Fluid interactions
+  if (!isEmpty(x, y - 1) && Particles.isFluid(pixelData[pixelBellow])) {
+    if (shouldSink(index, pixelBellow)) {
+      swapPixel(x, y, x, y + 1);
+    }
+  } else if (!isEmpty(x, y + 1) && Particles.isFluid(pixelData[pixelAbove])) {
+    if (shouldSink(pixelAbove, index)) {
+      swapPixel(x, y, x, y - 1);
+    }
+  }
+}
+
+function handleParticle(index, x, y) {
+  switch (pixelData[index]) {
+    case Particles.Dust: { dust(x, y); break; }
+    case Particles.Stone: { stone(x, y); break; }
+    case Particles.Water: { water(x, y); break; }
+    case Particles.Metal: { metal(x, y); break; }
+    case Particles.Rust: { rust(x, y); break; }
+    case Particles.Lava: { lava(x, y); break; }
+    case Particles.Void: { voidParticle(x, y); break; }
+    case Particles.Fire: { fire(x, y); break; }
+    case Particles.Steam: { steam(x, y); break; }
+  }
+}
+
+function isInBounds(x, y) {
+  // check if a pixel is within the screen space
+  return x >= 0 && x < screenWidth && y >= 0 && y < screenHeight;
+}
+
+function isEmpty(x, y) {
+  if (!isInBounds(x, y)) return false;
+  const index = coordsToIndex(x, y);
+  return pixelData[index] === Particles.Air || pixelData[index] === Particles.Fire;
+}
+
+function shouldSink(index, targetIndex) {
+  // returns true is the particle should be able to sink on the target
+  // Note: just because it is hevyer doesn't mean it will sink on this frame. It just increases the chance
+  if (Density[pixelData[index]] > Density[pixelData[targetIndex]]) {
+    return Density[pixelData[index]] > Random.float(0, Density[pixelData[targetIndex]] * 2)
+  }
+  return false;
+
+}
+
+/* Particle Physics */
+
+function steam(x, y) {
+  /*
+  * offset 2 is the temperature
+  */
+
+  let index = coordsToIndex(x, y);
+
+  // random chance
+  if (Random.number() < 0.05) {
+    pixelData[index + 2]--;
+  }
+
+  if (pixelData[index + 2] <= 50) {
+    // turns into water
+    pixelData[index] = Particles.Water;
+    return;
+  }
+
+  const direction = Random.number() > 0.5 ? 1 : -1;
+  i = 0;
+  do {
+    if (isEmpty(x + direction, y)) {
+      movePixel(x, y, x + direction, y);
+      x += direction;
+      index = coordsToIndex(x, y);
+    }
+  } while (++i < 1);
+
+  // random chance
+  if (Random.number() < 0.3) {
+    if (isEmpty(x, y - 1)) {
+      movePixel(x, y, x, --y);
+    }
+  }
+
+}
+
+function fire(x, y) {
+  let index = coordsToIndex(x, y);
+  if (pixelData[index + 1]) {
+    pixelData[index + 1] = 0;
+    return;
+  }
+
+  // probability to expire
+  if (Random.number() > 0.95) {
+    removePixel(x, y);
+    return;
+  }
+
+  // attempts to go up
+
+  let i = 0;
+  let canMove = true;
+  do {
+    if (isInBounds(x, y - 1) && pixelData[coordsToIndex(x, y - 1)] === Particles.Air) {
+      movePixel(x, y, x, --y);
+      index = coordsToIndex(x, y);
+      pixelData[index + 1] = 1;
+    }
+  } while (++i < 2 && canMove);
+
+  const direction = Random.number() > 0.5 ? 1 : -1;
+  if (isEmpty(x + direction, y)) {
+    movePixel(x, y, x + direction, y);
+    index = coordsToIndex(x + direction, y);
+    pixelData[index + 1] = 1;
+  } else if (isEmpty(x - direction, y)) {
+    movePixel(x, y, x - direction, y);
+    index = coordsToIndex(x - direction, y);
+    pixelData[index + 1] = 1;
+  } else {
+    canMove = false;
+  }
+
+}
+
+function voidParticle(x, y) {
+  // removes any particle that touches it and is not void
+
+  const adjacent = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+
+  // check if it is touching water
+  for (let [targetX, targetY] of adjacent) {
+    if (!isEmpty(targetX, targetY) && pixelData[coordsToIndex(targetX, targetY)] !== Particles.Void) {
+      removePixel(targetX, targetY);
+    }
+  }
+
+}
+
+function lava(x, y) {
+  const adjacent = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+
+  // check if it is touching water
+  const index = coordsToIndex(x, y);
+
+  for (let [targetX, targetY] of adjacent) {
+    const adjacentIndex = coordsToIndex(targetX, targetY);
+    if (pixelData[adjacentIndex] === Particles.Water) {
+      // set the lava to stone
+      pixelData[index] = Particles.Stone;
+      // Heat the water
+      pixelData[adjacentIndex + 2] += 100;
+      return;
+    }
+  }
+
+  let i = 0;
+  let canMove = true;
+  do {
+    if (isEmpty(x, y + 1)) {
+      movePixel(x, y, x, ++y);
+    } else {
+      canMove = false;
+    }
+  } while (++i < 2 && canMove);
+
+  if (canMove) {
+    return;
+  }
+
+  let direction = Random.direction();
+
+  i = 0;
+  do {
+    if (isEmpty(x + direction, y)) {
+      movePixel(x, y, x + direction, y);
+      x += direction;
+    } else {
+      direction *= -1;
+      continue;
+    }
+  } while (++i < 3);
+
+}
+
+function rust(x, y) {
+  // acts like dust
+  dust(x, y);
+}
+
+function metal(x, y) {
+  // metal does not move.
+  // if a particle of metal is in contact with water, it has a probability of becoming rust.
+  // if a particle of metal is in contact with rust, it has a smaller probability of becoming rust
+
+  // check the adjacent pixels
+  const adjacent = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+  const index = coordsToIndex(x, y);
+
+  for (let [targetX, targetY] of adjacent) {
+    if (!isInBounds(targetX, targetY)) continue;
+    const targetIndex = coordsToIndex(targetX, targetY);
+    if (pixelData[targetIndex] === Particles.Water) {
+      if (Random.number() < 0.01) {
+        pixelData[index] = Particles.Rust;
+        return;
+      }
+    } else if (pixelData[targetIndex] === Particles.Rust) {
+      if (Random.number() < 0.001) {
+        pixelData[index] = Particles.Rust;
+        return;
+      }
+    } else if (pixelData[targetIndex] === Particles.Lava) {
+      if (Random.number() < 0.01) {
+        pixelData[index] = Particles.Lava;
+        return;
+      }
+    }
+  }
+}
+
+function water(x, y) {
+  /*
+  * offset 2 is the water temperature
+  */
+  let index = coordsToIndex(x, y);
+
+  if (pixelData[index + 2] >= 100) {
+    // turn into Steam
+    pixelData[index] = Particles.Steam;
+    return;
+  }
+
+  let i = 0;
+  let canMove = true;
+  do {
+    if (isEmpty(x, y + 1)) {
+      movePixel(x, y, x, ++y);
+      index = coordsToIndex(x, y);
+    } else {
+      canMove = false;
+    }
+  } while (++i < 2 && canMove);
+
+  let direction = Random.direction();
+
+  i = 0;
+  do {
+    if (isEmpty(x + direction, y)) {
+      movePixel(x, y, x + direction, y);
+      x += direction;
+    } else {
+      direction *= -1;
+      continue;
+    }
+  } while (++i < 3);
+
+}
+
+function stone(x, y) {
+
+  const adjacent = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+  // if adjacent to lava, it has a chance of becoming lava
+  const index = coordsToIndex(x, y);
+
+  for (let [targetX, targetY] of adjacent) {
+    if (!isInBounds(targetX, targetY)) continue;
+    const targetIndex = coordsToIndex(targetX, targetY);
+    if (pixelData[targetIndex] === Particles.Lava) {
+      if (Random.number() < 0.001) {
+        pixelData[index] = Particles.Lava;
+        return;
+      }
+    }
+  }
+
+  // check if the pixel below is empty
+  let i = 0;
+  let canMove = true;
+  do {
+    if (isEmpty(x, y + 1)) {
+      movePixel(x, y, x, ++y);
+    } else {
+      canMove = false;
+    }
+  } while (++i <= 3 && canMove);
+}
+
+function dust(x, y) {
+  const index = coordsToIndex(x, y);
+
+  pixelData[index + 1] = pixelData[index + 1] > 100 ? 100 : pixelData[index + 1];
+  pixelData[index + 1] = pixelData[index + 1] < 0 ? 0 : pixelData[index + 1];
+
+  const adjacent = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+
+  for (let [targetX, targetY] of adjacent) {
+    // check if it is touching lava or fire
+    const targetIndex = coordsToIndex(targetX, targetY);
+    if (
+      isInBounds(targetX, targetY) &&
+      (
+        pixelData[targetIndex] === Particles.Lava ||
+        pixelData[targetIndex] === Particles.Fire
+      )
+    ) {
+      // random chance
+      if (Random.number() < 0.5) {
+        // set the dust to fire
+        pixelData[index] = Particles.Fire;
+        return;
+      }
+    }
+  }
+  if (pixelData[index + 1] <= 0) { // The particle is settled
+    // count how many of the pixels touching the particle (including diagonals) are dust
+    let count = 0;
+    let i = 0;
+    const adjacentDust = [
+      [x - 1, y], // left
+      [x + 1, y], // right
+      [x, y - 1], // up
+      [x - 1, y - 1], // up left
+      [x + 1, y - 1], // up right
+      [x, y + 1], // down
+      [x + 1, y + 1], // down left
+      [x - 1, y + 1], // down right
+
+    ];
+    do {
+      const [targetX, targetY] = adjacentDust[i];
+      if (isInBounds(targetX, targetY)) {
+        const targetIndex = coordsToIndex(targetX, targetY);
+        if (pixelData[targetIndex] === Particles.Dust) {
+          count++;
+        }
+      }
+    } while (++i < adjacentDust.length);
+
+    if (count >= 4) {
+      // if there are 4 or more dust particles touching the particle it doesn't need to move
+      return;
+    }
+  }
+
+  if (pixelData[index + 1] < 0) {
+    pixelData[index + 1] = 0;
+  }
+
+  if (pixelData[index + 1] > 100) {
+    pixelData[index + 1] = 100;
+  }
+
+  let i = 0;
+  let canMove = true;
+  do {
+    if (isEmpty(x, y + 1)) {
+      // moving down also gives energy to the dust above
+      const aboveIndex = coordsToIndex(x, y - 1);
+      if (isInBounds(x, y - 1) && pixelData[aboveIndex] === Particles.Dust) {
+        pixelData[aboveIndex + 1]++;
+      }
+
+      pixelData[index + 1] += 2;
+      movePixel(x, y, x, ++y);
+    } else {
+      pixelData[index + 1]--;
+      canMove = false;
+    }
+  } while (++i <= 2 && canMove);
+
+
+  if (pixelData[index + 1] <= 0) return;
+
+  // chooses left or right
+  const direction = Random.direction();
+  if (isEmpty(x + direction, y)) {
+    movePixel(x, y, x + direction, y);
+  } else {
+    // dust can move sideways even on  liquids
+    // check if the pixel in the desired spot is liquid
+    if (Particles.isFluid(pixelData[coordsToIndex(x + direction, y)])) {
+      // it is a liquid, in that case swap instead of moving
+      swapPixel(x, y, x + direction, y);
+    } else {
+      if (!canMove) {
+        pixelData[index + 1]--;
+      }
+    }
+  }
+}
+
+function removePixel(x, y) {
+  const index = coordsToIndex(x, y);
+  for (let i = 0; i < pixelDataSize; i++) {
+    pixelData[index + i] = 0;
+  }
+}
+
+function movePixel(prevX, prevY, x, y) {
+  // Transfers the data starting at the previous index to the new index
+  const prevPos = coordsToIndex(prevX, prevY);
+  const newPos = coordsToIndex(x, y);
+  for (let i = 0; i < pixelDataSize; i++) {
+    pixelData[newPos + i] = pixelData[prevPos + i];
+
+    // also deletes the data at the old position
+    pixelData[prevPos + i] = 0;
+  }
+}
+
+function swapPixel(x, y, x2, y2) {
+  const index1 = coordsToIndex(x, y);
+  const index2 = coordsToIndex(x2, y2);
+  let temp;
+  for (let i = 0; i < pixelDataSize; i++) {
+    temp = pixelData[index1 + i];
+    pixelData[index1 + i] = pixelData[index2 + i];
+    pixelData[index2 + i] = temp;
+  }
+}
+
+
+
+
+function log(data) {
+  postMessage({
+    type: 'debug',
+    data: data,
+  });
+}
+},{"./Particles/Particles":1,"./Utils/Random":2}]},{},[3]);
